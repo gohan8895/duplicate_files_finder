@@ -1,13 +1,38 @@
 #!/usr/bin/env python3
 
-from hashlib import md5
+# from hashlib import md5
+import hashlib
 from os import path, walk
 from argparse import ArgumentParser
 from json import dumps
 
 
-def get_parser():
-	pass
+# def get_parser():
+#     """
+#     parse input
+#     :return: arguments from console
+#     """
+#     parser = ArgumentParser()
+#     # Way_point 1:
+#     parser.add_argument('-p', '--path', type=str, required=True,
+#                         help='accepts one mandatory argument that '
+#                              'identifies the root directory to start '
+#                              'scanning for duplicate files')
+#     # Way_point 8:
+#     parser.add_argument('-b', '--bonus', type=bool,
+#                         help='another method to find duplicate files that '
+#                              'would be much faster than using hash algorithm')
+#     args = parser.parse_args()
+#     if not path.isdir(args.path):
+#         parser.print_help()
+#         exit(1)
+#     return args
+
+def read_args():
+    finder = ArgumentParser()
+    finder.add_argument('-p', '--path',
+                        help="directory want to find duplicate",)
+    return finder.parse_args()
 
 
 def scan_files(directory):
@@ -55,44 +80,57 @@ def group_files_by_size(file_path_names):
 
 
 def get_file_checksum(file_path_name):
-	# must use module hashlib
-	pass
-
-
-def calculate_hashes(fname):
     """
-    Description: Calculate sha1 of file
+    Description: Calculate md5 of file
     Input argument:
-        * fname: the file name to get sha1
+        * file_path_name: the file name to get md5
     Output:
-        * hash_sha1
+        * hash_md5: md5 value of the file
     """
-    hash_sha1 = hashlib.sha1()
-    with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(2 ** 20), b""):
-            hash_sha1.update(chunk)
-    return hash_sha1.hexdigest()
+    hash_md5 = hashlib.md5()
+    with open(file_path_name, "rb") as f:
+        for chunk in iter(lambda: f.read(2 ** 12), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
 
-  
+
 def group_files_by_checksum(file_path_names):
 	# must use get_file_checksum
-	pass
+	group_duplicate_checksum = list()
+	duplicate_checksum_dict = dict()
+	for file_name in file_path_names:
+		check_sum = get_file_checksum(file_name)
+		if check_sum is None:
+			continue
+		elif check_sum in duplicate_checksum_dict.keys():
+			duplicate_checksum_dict[check_sum].append(file_name)
+		else:
+			duplicate_checksum_dict[check_sum] = [file_name]
+	for group in duplicate_checksum_dict.values():
+		if len(group) > 1:
+			group_duplicate_checksum.append(group)
+	return group_duplicate_checksum
 
 
 def group_duplicate_files(file_path_names):
 	# group_files_by_size
 	# group_files_by_checksum
-	pass
+    groups_dup_files = []
+    for gr_by_size in group_files_by_size(file_path_names):
+        groups_dup_files += group_files_by_checksum(gr_by_size)
+    return [gr for gr in groups_dup_files if len(gr) > 1]
 
 
 def main():
-	list_path_names = scan_files('test')
-	for x in list_path_names:
-		print(x)
-	file_size_dict = group_files_by_size(list_path_names)
-	for x in file_size_dict:
-		print(x)
+    args = read_args()
+    if args.path and not path.isdir(args.path):
+        print("Invalid path")
+        exit(1)
+    files = scan_files(args.path or ".")
+    duplicates = find_duplicate_files(files)
+    print(dumps(duplicates, sort_keys=True, indent=4))
 
-if __name__ == '__main__':
-	main()
+
+if __name__ == "__main__":
+    main()
 
